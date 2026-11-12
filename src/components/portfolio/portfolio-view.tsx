@@ -260,13 +260,13 @@ main [id] { scroll-margin-top: 5rem; }
   .pf-reveal .pf-line, .pf-reveal .pf-head-line { scale: 1 1 !important; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after { animation: none !important; transition: none !important; }
-  .pf-letter-wrap, .pf-year, .pf-hero-img, .pf-hero-meta, .pf-reveal { opacity: 1 !important; translate: none !important; }
-  .pf-orb-x { translate: calc(var(--rx) * cos(var(--a))) 0; }
-  .pf-orb-y { translate: 0 calc(var(--ry) * sin(var(--a))); }
-}
+// @media (prefers-reduced-motion: reduce) {
+//   html { scroll-behavior: auto; }
+//   *, *::before, *::after { animation: none !important; transition: none !important; }
+//   .pf-letter-wrap, .pf-year, .pf-hero-img, .pf-hero-meta, .pf-reveal { opacity: 1 !important; translate: none !important; }
+//   .pf-orb-x { translate: calc(var(--rx) * cos(var(--a))) 0; }
+//   .pf-orb-y { translate: 0 calc(var(--ry) * sin(var(--a))); }
+// }
 `;
 
 /* ---------- icon ---------- */
