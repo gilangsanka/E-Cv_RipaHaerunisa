@@ -209,7 +209,7 @@ main button, main a, main [role="button"] { touch-action: manipulation; }
 .pf-spot { display: none; }
 
 /* --- hard skills mengorbit di sekitar gambar hero --- */
-.pf-orbit { --P: 28s; --rx: min(calc(var(--h) * .66), 34vw); --ry: calc(var(--h) * .3); }
+.pf-orbit { --P: 28s; --P-half: 14s; --P-quarter: 7s; --rx: min(calc(var(--h) * .66), 34vw); --ry: calc(var(--h) * .3); }
 @keyframes pf-orb-x { from { transform: translate3d(calc(var(--rx) * -1),0,0); } to { transform: translate3d(var(--rx),0,0); } }
 @keyframes pf-orb-y { from { transform: translate3d(0,calc(var(--ry) * -1),0); } to { transform: translate3d(0,var(--ry),0); } }
 @keyframes pf-orb-z { 0%, 49.9% { z-index: 30; } 50%, 100% { z-index: 5; } }
@@ -219,10 +219,10 @@ main button, main a, main [role="button"] { touch-action: manipulation; }
   75% { transform: translate(-50%,-50%) scale(.78); opacity: .6; }
   100% { transform: translate(-50%,-50%) scale(.92); opacity: .9; }
 }
-.pf-orb-z { animation: pf-orb-z var(--P) linear infinite; animation-delay: calc(var(--o) * -1); }
-.pf-orb-x { animation: pf-orb-x calc(var(--P) / 2) cubic-bezier(.37,0,.63,1) infinite alternate; animation-delay: calc(var(--o) * -1); }
-.pf-orb-y { animation: pf-orb-y calc(var(--P) / 2) cubic-bezier(.37,0,.63,1) infinite alternate; animation-delay: calc(var(--o) * -1 - var(--P) / 4); }
-.pf-orb-chip { position: absolute; left: 0; top: 0; transform: translate(-50%,-50%); white-space: nowrap; animation: pf-orb-s var(--P) linear infinite; animation-delay: calc(var(--o) * -1); }
+.pf-orb-z { animation: pf-orb-z var(--P) linear infinite; animation-delay: var(--o); }
+.pf-orb-x { animation: pf-orb-x var(--P-half) cubic-bezier(.37,0,.63,1) infinite alternate; animation-delay: var(--o); }
+.pf-orb-y { animation: pf-orb-y var(--P-half) cubic-bezier(.37,0,.63,1) infinite alternate; animation-delay: calc(var(--o) - var(--P-quarter)); }
+.pf-orb-chip { position: absolute; left: 0; top: 0; transform: translate(-50%,-50%); white-space: nowrap; animation: pf-orb-s var(--P) linear infinite; animation-delay: var(--o); }
 
 /* --- scroll reveal --- */
 .pf-reveal { opacity: 0; transform: translate3d(0,28px,0); transition: opacity 1s var(--ease), transform 1s var(--ease); transition-delay: var(--d, 0ms); }
@@ -337,9 +337,6 @@ main [id] { scroll-margin-top: 5rem; }
   .pf-lift:active { transform: scale(.96); transition: transform .12s ease-out; }
   .pf-nav-link:hover { background-color: transparent; }
 
-  /* orbit sedikit lebih rapat agar tidak terpotong di layar sempit */
-  .pf-orbit { --rx: min(calc(var(--h) * .6), 30vw); }
-
   /* pop up di HP: naik dari bawah seperti bottom sheet */
   .pf-modal { animation-name: pf-sheet-in; }
 }
@@ -352,6 +349,7 @@ main [id] { scroll-margin-top: 5rem; }
 /* --- performa GPU (dibatasi supaya memori HP tidak habis) --- */
 .pf-letter-wrap, .pf-orb-x, .pf-orb-y, .pf-marquee, .pf-sway { will-change: transform; }
 `;
+
 
 /* ---------- icon ---------- */
 const ICONS: Record<string, React.ReactNode> = {
