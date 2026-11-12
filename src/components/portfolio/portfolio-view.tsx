@@ -314,40 +314,34 @@ ${STAGGER_CSS}
 main [id] { scroll-margin-top: 5rem; }
 
 /* --- perangkat sentuh (HP / tablet): pengganti efek kursor --- */
-/* --- perangkat sentuh (HP / tablet) --- */
 @media (hover: none) {
-  /* Sembunyikan efek yang mengikuti kursor */
-  .pf-arrow {
-    display: none;
-  }
+  .pf-arrow { display: none; }
+  .pf-card:hover { box-shadow: none; }
+  .pf-card:not(.pf-tilt):hover { transform: none; }
+  .pf-tilt:hover { --ty: 0px; }
+  .pf-glow { animation: none; opacity: .7; }
 
-  .pf-cursor-spot {
-    display: none;
-  }
+  /* parallax hero mengikuti scroll (var --sp = 0..1, diisi lewat JS) menggantikan parallax kursor */
+  #home h1 { transform: translate3d(0, calc(var(--sp, 0) * 36px), 0) !important; transition: none !important; }
+  .pf-hero-img { transform: translate3d(0, calc(var(--sp, 0) * -22px), 0) !important; transition: none !important; }
+  /* bayangan filter pada PNG besar sangat berat di GPU HP */
+  .pf-hero-pic { filter: none !important; }
 
-  /* Animasi glow tetap berjalan di HP */
-  .pf-glow {
-    opacity: 1;
-  }
+  /* sorotan biru melayang pelan, dan mengikuti titik sentuhan terakhir lewat var(--px/--py) */
+  .pf-spot { display: block; animation: pf-spot 14s ease-in-out infinite; }
+  .pf-cursor-spot { display: none; }
 
-  /* Sorotan biru tetap bergerak */
-  .pf-spot {
-    display: block;
-    animation: pf-spot 14s ease-in-out infinite;
-  }
+  /* umpan balik sentuhan: kartu & tombol sedikit menekan */
+  .pf-tilt:active { transform: perspective(900px) scale(.975); transition: transform .12s ease-out; }
+  .pf-card:not(.pf-tilt):active { transform: scale(.985); transition: transform .12s ease-out; }
+  .pf-lift:active { transform: scale(.96); transition: transform .12s ease-out; }
+  .pf-nav-link:hover { background-color: transparent; }
 
-  /* Efek hover tidak dipaksakan pada layar sentuh */
-  .pf-card:hover {
-    box-shadow: none;
-  }
+  /* orbit sedikit lebih rapat agar tidak terpotong di layar sempit */
+  .pf-orbit { --rx: min(calc(var(--h) * .6), 30vw); }
 
-  .pf-card:not(.pf-tilt):hover {
-    transform: none;
-  }
-
-  .pf-tilt:hover {
-    --ty: 0px;
-  }
+  /* pop up di HP: naik dari bawah seperti bottom sheet */
+  .pf-modal { animation-name: pf-sheet-in; }
 }
 
 /* --- ponsel landscape (layar pendek) --- */
