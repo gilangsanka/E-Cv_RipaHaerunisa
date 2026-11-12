@@ -654,7 +654,6 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
     orgList.length > 0 && { id: "organisasi", label: "Organisasi" },
     projList.length > 0 && { id: "proyek", label: "Proyek" },
     certPanels.length > 0 && { id: "sertifikasi", label: "Sertifikasi" },
-    // { id: "kontak", label: "Kontak" },
   ].filter(Boolean) as { id: string; label: string }[];
   const navKey = navItems.map((n) => n.id).join(",");
 
