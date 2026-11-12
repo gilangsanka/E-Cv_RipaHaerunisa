@@ -44,6 +44,40 @@ const CV_URL = "/cv?print=1";
 /* jumlah item organisasi yang tampil di panel sebelum "Lihat Selengkapnya" */
 const PREVIEW_COUNT = 3;
 
+/* ---------- kunci scroll halaman saat pop up terbuka (aman untuk iOS Safari) ---------- */
+let lockCount = 0;
+let lockY = 0;
+const isLocked = () => lockCount > 0;
+function lockScroll() {
+  if (lockCount++ > 0) return;
+  lockY = window.scrollY;
+  const b = document.body.style;
+  const touch = window.matchMedia?.("(hover: none)").matches;
+  if (touch) {
+    /* iOS mengabaikan overflow:hidden di body, jadi body "dibekukan" dengan position: fixed */
+    b.position = "fixed";
+    b.top = `-${lockY}px`;
+    b.left = "0";
+    b.right = "0";
+    b.width = "100%";
+  } else {
+    b.overflow = "hidden";
+  }
+}
+function unlockScroll() {
+  if (--lockCount > 0) return;
+  lockCount = 0;
+  const b = document.body.style;
+  const wasFixed = b.position === "fixed";
+  b.position = "";
+  b.top = "";
+  b.left = "";
+  b.right = "";
+  b.width = "";
+  b.overflow = "";
+  if (wasFixed) window.scrollTo({ top: lockY, behavior: "instant" as ScrollBehavior });
+}
+
 /* ---------- helper data ---------- */
 const pick = (o: unknown, keys: string[]): string => {
   const r = o as Record<string, unknown>;
@@ -121,13 +155,16 @@ const STAGGER_CSS = Array.from({ length: 12 }, (_, i) =>
 /* Semua animasi memakai `transform` (bukan properti translate / scale / rotate terpisah)
    supaya jalan di browser HP yang lebih lama. */
 const CSS = `
-html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 :root { --ease: cubic-bezier(.22,1,.36,1); }
+main { -webkit-tap-highlight-color: transparent; overflow-x: hidden; overflow-x: clip; }
+main button, main a, main [role="button"] { touch-action: manipulation; }
 
 /* variabel hero: fallback vh dulu, lalu svh bila didukung */
 #home {
   --title: clamp(2.75rem, min(15vw, 27vh), 17rem);
   --hero-h: clamp(15rem, 50vh, 40rem);
+  --sp: 0;
   min-height: 100vh;
 }
 @supports (height: 100svh) {
@@ -151,6 +188,8 @@ html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 @keyframes pf-glow { 0%,100% { opacity: .55; } 50% { opacity: .85; } }
 @keyframes pf-scroll { 0% { transform: translate3d(0,-100%,0); } 100% { transform: translate3d(0,100%,0); } }
 @keyframes pf-sway { 0%,100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
+/* sorotan hero yang "berkeliling" sendiri di layar sentuh (pengganti kursor) */
+@keyframes pf-spot { 0% { transform: translate3d(-18%,-8%,0); } 50% { transform: translate3d(18%,10%,0); } 100% { transform: translate3d(-18%,-8%,0); } }
 
 .pf-letter-wrap {
   display: inline-block;
@@ -167,6 +206,7 @@ html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 .pf-hero-meta { opacity: 0; animation: pf-fade 1s var(--ease) calc(var(--d) * 1ms + 1100ms) both; }
 .pf-glow { animation: pf-glow 7s ease-in-out infinite; }
 .pf-scroll-line::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: ${INK}; animation: pf-scroll 2.2s var(--ease) infinite; }
+.pf-spot { display: none; }
 
 /* --- hard skills mengorbit di sekitar gambar hero --- */
 .pf-orbit { --P: 28s; --rx: min(calc(var(--h) * .66), 34vw); --ry: calc(var(--h) * .3); }
@@ -211,6 +251,7 @@ html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
   display: flex; gap: 1rem; overflow-x: auto; overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
   padding: .5rem .25rem 1rem; margin: -.5rem -.25rem 0;
+  scroll-padding-left: .25rem;
   scrollbar-width: none;
 }
 .pf-hscroll::-webkit-scrollbar { display: none; }
@@ -220,8 +261,10 @@ html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 /* --- pop up --- */
 @keyframes pf-modal-bg-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pf-modal-in { from { opacity: 0; transform: translate3d(0,24px,0) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes pf-sheet-in { from { opacity: 0; transform: translate3d(0,60px,0); } to { opacity: 1; transform: none; } }
 .pf-modal-bg { animation: pf-modal-bg-in .25s ease both; }
 .pf-modal { animation: pf-modal-in .45s var(--ease) both; }
+.pf-modal-scroll { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 
 /* --- kartu & chip muncul bergantian --- */
 @keyframes pf-card-in { from { opacity: 0; transform: translate3d(0,36px,0) scale(.94); } }
@@ -270,13 +313,35 @@ ${STAGGER_CSS}
 .pf-nav-link:hover { background-color: rgba(0,0,0,.07); }
 main [id] { scroll-margin-top: 5rem; }
 
-/* --- perangkat sentuh: tanpa panah geser, tanpa efek hover yang "menempel", glow statis --- */
+/* --- perangkat sentuh (HP / tablet): pengganti efek kursor --- */
 @media (hover: none) {
   .pf-arrow { display: none; }
   .pf-card:hover { box-shadow: none; }
   .pf-card:not(.pf-tilt):hover { transform: none; }
   .pf-tilt:hover { --ty: 0px; }
   .pf-glow { animation: none; opacity: .7; }
+
+  /* parallax hero mengikuti scroll (var --sp = 0..1, diisi lewat JS) menggantikan parallax kursor */
+  #home h1 { transform: translate3d(0, calc(var(--sp, 0) * 36px), 0) !important; transition: none !important; }
+  .pf-hero-img { transform: translate3d(0, calc(var(--sp, 0) * -22px), 0) !important; transition: none !important; }
+  /* bayangan filter pada PNG besar sangat berat di GPU HP */
+  .pf-hero-pic { filter: none !important; }
+
+  /* sorotan biru melayang pelan, dan mengikuti titik sentuhan terakhir lewat var(--px/--py) */
+  .pf-spot { display: block; animation: pf-spot 14s ease-in-out infinite; }
+  .pf-cursor-spot { display: none; }
+
+  /* umpan balik sentuhan: kartu & tombol sedikit menekan */
+  .pf-tilt:active { transform: perspective(900px) scale(.975); transition: transform .12s ease-out; }
+  .pf-card:not(.pf-tilt):active { transform: scale(.985); transition: transform .12s ease-out; }
+  .pf-lift:active { transform: scale(.96); transition: transform .12s ease-out; }
+  .pf-nav-link:hover { background-color: transparent; }
+
+  /* orbit sedikit lebih rapat agar tidak terpotong di layar sempit */
+  .pf-orbit { --rx: min(calc(var(--h) * .6), 30vw); }
+
+  /* pop up di HP: naik dari bawah seperti bottom sheet */
+  .pf-modal { animation-name: pf-sheet-in; }
 }
 
 /* --- ponsel landscape (layar pendek) --- */
@@ -326,17 +391,31 @@ function useInView<T extends HTMLElement>() {
     const el = ref.current;
     if (!el) return;
     if (typeof IntersectionObserver === "undefined") return setSeen(true);
+
+    const done = () => {
+      setSeen(true);
+      io.disconnect();
+      window.removeEventListener("scroll", onScroll);
+    };
     const io = new IntersectionObserver(
       ([e]) => {
-        if (e.isIntersecting) {
-          setSeen(true);
-          io.disconnect();
-        }
+        if (e.isIntersecting) done();
       },
-      { threshold: 0, rootMargin: "0px 0px -8% 0px" },
+      { threshold: 0, rootMargin: "0px 0px -6% 0px" },
     );
+    /* cadangan: di HP elemen paling bawah kadang tidak pernah melewati batas -6% walau sudah di dasar halaman,
+       jadi bila sudah mentok di bawah dan elemen terlihat, tampilkan saja. */
+    const onScroll = () => {
+      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      if (atBottom && el.getBoundingClientRect().top < window.innerHeight) done();
+    };
     io.observe(el);
-    return () => io.disconnect();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => {
+      io.disconnect();
+      window.removeEventListener("scroll", onScroll);
+    };
   }, []);
   return [ref, seen] as const;
 }
@@ -384,7 +463,7 @@ function PanelRight({ info, onMore }: { info?: React.ReactNode; onMore: () => vo
       <button
         type="button"
         onClick={onMore}
-        className="inline-flex items-center gap-1.5 rounded-full border border-black/15 px-3.5 py-1.5 text-[11px] font-bold text-black transition-colors hover:bg-black hover:text-white"
+        className="inline-flex items-center gap-1.5 rounded-full border border-black/15 px-3.5 py-1.5 text-[11px] font-bold text-black transition-colors hover:bg-black hover:text-white active:bg-black active:text-white"
       >
         Lihat Selengkapnya
         <Icon name="right" className="h-3 w-3" />
@@ -476,17 +555,14 @@ function ModalShell({
   }, [listen, onClose]);
 
   useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    lockScroll();
+    return unlockScroll;
   }, []);
 
   return (
     <div
       className="pf-modal-bg fixed inset-0 flex items-end justify-center p-2 sm:items-center sm:p-4"
-      style={{ zIndex: z, background: "rgba(10,12,20,.6)", backdropFilter: "blur(6px)" }}
+      style={{ zIndex: z, background: "rgba(10,12,20,.6)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}
       onClick={onClose}
     >
       <div
@@ -499,7 +575,7 @@ function ModalShell({
         <button type="button" aria-label="Tutup" onClick={onClose} className="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/80 text-white transition-colors hover:bg-black">
           <Icon name="close" className="h-4 w-4" />
         </button>
-        <div className="overflow-y-auto p-5 md:p-6">{children}</div>
+        <div className="pf-modal-scroll overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:p-6">{children}</div>
       </div>
     </div>
   );
@@ -654,7 +730,7 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
     orgList.length > 0 && { id: "organisasi", label: "Organisasi" },
     projList.length > 0 && { id: "proyek", label: "Proyek" },
     certPanels.length > 0 && { id: "sertifikasi", label: "Sertifikasi" },
-    { id: "kontak", label: "Kontak" },
+    // { id: "kontak", label: "Kontak" },
   ].filter(Boolean) as { id: string; label: string }[];
   const navKey = navItems.map((n) => n.id).join(",");
 
@@ -668,15 +744,21 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
     let raf = 0;
     const calc = () => {
       raf = 0;
-      const max = document.documentElement.scrollHeight - window.innerHeight;
+      /* saat pop up terbuka body dibekukan (scrollY = 0), jangan hitung ulang supaya nav tidak berkedip */
+      if (isLocked()) return;
+      const vh = window.innerHeight;
+      const max = document.documentElement.scrollHeight - vh;
       const y = window.scrollY;
       const pr = max > 0 ? Math.min(1, Math.max(0, y / max)) : 0;
       if (ringRef.current) ringRef.current.style.strokeDashoffset = String(RING * (1 - pr));
-      setPastHero(y > window.innerHeight * 0.75);
+      /* parallax hero berbasis scroll (dipakai di layar sentuh) */
+      const hero = document.getElementById("home");
+      if (hero && y < vh * 1.5) hero.style.setProperty("--sp", String(Math.min(1, Math.max(0, y / vh)).toFixed(3)));
+      setPastHero(y > vh * 0.75);
       let cur = "";
       for (const id of ids) {
         const el = document.getElementById(id);
-        if (el && el.getBoundingClientRect().top <= window.innerHeight * 0.4) cur = id;
+        if (el && el.getBoundingClientRect().top <= vh * 0.4) cur = id;
       }
       setActive(cur);
     };
@@ -686,9 +768,11 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
     calc();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
+    window.addEventListener("orientationchange", onScroll);
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
+      window.removeEventListener("orientationchange", onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
   }, [navKey]);
@@ -723,17 +807,18 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
     }
   };
 
-  /* parallax + sorotan di hero: hanya mouse / pen. Sentuhan dilewati supaya swipe tetap mulus. */
+  /* hero: kursor (mouse / pen) -> parallax + sorotan. Sentuhan -> hanya sorotan di titik sentuh
+     (parallax HP memakai scroll, lihat var --sp), supaya swipe tetap mulus. */
   const onHeroMove = (e: React.PointerEvent<HTMLElement>) => {
-    if (e.pointerType === "touch") return;
     const el = e.currentTarget;
     const r = el.getBoundingClientRect();
     const x = (e.clientX - r.left) / r.width;
     const y = (e.clientY - r.top) / r.height;
-    el.style.setProperty("--mx", String((x - 0.5) * 2));
-    el.style.setProperty("--my", String((y - 0.5) * 2));
     el.style.setProperty("--px", `${x * 100}%`);
     el.style.setProperty("--py", `${y * 100}%`);
+    if (e.pointerType === "touch") return;
+    el.style.setProperty("--mx", String((x - 0.5) * 2));
+    el.style.setProperty("--my", String((y - 0.5) * 2));
   };
   const onHeroLeave = (e: React.PointerEvent<HTMLElement>) => {
     e.currentTarget.style.setProperty("--mx", "0");
@@ -840,7 +925,7 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
         <div className="relative aspect-[16/9.4] w-full overflow-hidden rounded-[0.9rem] bg-[#eceaf5]">
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={img} alt={projTitle(p)} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+            <img src={img} alt={projTitle(p)} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
           ) : (
             <div className="h-full w-full" style={{ background: "linear-gradient(135deg,#e1e8ff,#f1eefb)" }} />
           )}
@@ -895,7 +980,7 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
           {c.img && (
             <div className="mx-auto aspect-[1.7] w-[88%] overflow-hidden rounded-[0.9rem] bg-black/5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={c.img} alt={c.t} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              <img src={c.img} alt={c.t} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
             </div>
           )}
         </div>
@@ -938,7 +1023,7 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
             }}
           >
             <ul
-              className="flex items-center gap-1 overflow-x-auto rounded-full bg-white/15 p-1.5 ring-1 ring-black/10 backdrop-blur-lg"
+              className="flex items-center gap-1 overflow-x-auto rounded-full bg-white/70 p-1.5 ring-1 ring-black/10 backdrop-blur-lg"
               style={{ scrollbarWidth: "none" }}
             >
               {navItems.map((n) => (
@@ -988,8 +1073,10 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
         className="relative flex w-full flex-col overflow-hidden"
         style={{ background: SOFT }}
       >
-        {/* sorotan lembut yang mengikuti kursor */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 z-0" style={{ background: "radial-gradient(520px circle at var(--px, 50%) var(--py, 45%), rgba(47,107,255,.10), transparent 60%)" }} />
+        {/* sorotan lembut yang mengikuti kursor (desktop) */}
+        <div aria-hidden className="pf-cursor-spot pointer-events-none absolute inset-0 z-0" style={{ background: "radial-gradient(520px circle at var(--px, 50%) var(--py, 45%), rgba(47,107,255,.10), transparent 60%)" }} />
+        {/* sorotan yang berkeliling sendiri (HP / layar sentuh) */}
+        <div aria-hidden className="pf-spot pointer-events-none absolute inset-0 z-0" style={{ background: "radial-gradient(60vw circle at var(--px, 50%) var(--py, 45%), rgba(47,107,255,.12), transparent 60%)" }} />
         <div
           aria-hidden
           className="pf-glow pointer-events-none absolute left-1/2 top-[48%] h-[70vh] w-[70vh] rounded-full"
@@ -1038,7 +1125,7 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={HERO_SRC} alt={name} className="relative z-10 w-auto max-w-full object-contain object-bottom drop-shadow-[0_30px_30px_rgba(0,0,0,.12)]" style={{ height: "var(--hero-h)" }} />
+            <img src={HERO_SRC} alt={name} decoding="async" className="pf-hero-pic relative z-10 w-auto max-w-full object-contain object-bottom drop-shadow-[0_30px_30px_rgba(0,0,0,.12)]" style={{ height: "var(--hero-h)" }} />
 
             {/* hard skills mengorbit di sekitar gambar */}
             {orbitSkills.length > 0 && (
@@ -1128,7 +1215,7 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
                 <div className="aspect-[4/5] overflow-hidden rounded-xl p-1.5" style={{ background: "linear-gradient(135deg,#dfe6fb,#eef1fd)" }}>
                   <div className="h-full w-full overflow-hidden rounded-lg">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={HERO_SRC} alt={name} className="h-full w-full object-cover object-top" />
+                    <img src={HERO_SRC} alt={name} decoding="async" className="h-full w-full object-cover object-top" />
                   </div>
                 </div>
                 <p className="mt-3.5 text-center text-[15px] font-extrabold uppercase tracking-[0.02em]">{name}</p>
