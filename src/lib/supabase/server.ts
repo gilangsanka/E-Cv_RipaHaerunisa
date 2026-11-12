@@ -1,0 +1,24 @@
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+
+type CookieToSet = { name: string; value: string; options: CookieOptions };
+import { cookies } from "next/headers";
+
+export async function createClient() {
+  const store = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => store.getAll(),
+        setAll(list: CookieToSet[]) {
+          try {
+            list.forEach(({ name, value, options }) => store.set(name, value, options));
+          } catch {
+            /* dipanggil dari Server Component: aman diabaikan, middleware yang refresh sesi */
+          }
+        },
+      },
+    }
+  );
+}
