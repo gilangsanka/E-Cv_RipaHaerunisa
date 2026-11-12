@@ -118,24 +118,39 @@ const STAGGER_CSS = Array.from({ length: 12 }, (_, i) =>
   `.pf-reveal[data-in="1"] .pf-stagger > :nth-child(${i + 1}), .pf-modal .pf-stagger > :nth-child(${i + 1}) { animation-delay: ${i * 80}ms; }`,
 ).join("\n");
 
+/* Semua animasi memakai `transform` (bukan properti translate / scale / rotate terpisah)
+   supaya jalan di browser HP yang lebih lama. */
 const CSS = `
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 :root { --ease: cubic-bezier(.22,1,.36,1); }
-#home { min-height: 100vh; min-height: 100svh; }
+
+/* variabel hero: fallback vh dulu, lalu svh bila didukung */
+#home {
+  --title: clamp(2.75rem, min(15vw, 27vh), 17rem);
+  --hero-h: clamp(15rem, 50vh, 40rem);
+  min-height: 100vh;
+}
+@supports (height: 100svh) {
+  #home {
+    --title: clamp(2.75rem, min(15vw, 27svh), 17rem);
+    --hero-h: clamp(15rem, 50svh, 40rem);
+    min-height: 100svh;
+  }
+}
+
 .pf-text { font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif; }
 .pf-clamp3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .pf-clamp4 { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 
 /* --- hero --- */
-@keyframes pf-drop { from { opacity: 0; translate: 0 -70%; } to { opacity: 1; translate: 0 0; } }
-@keyframes pf-float { 0%,100% { translate: 0 0; } 50% { translate: 0 -.045em; } }
-@keyframes pf-rise { from { opacity: 0; translate: 0 60px; scale: .96; } to { opacity: 1; translate: 0 0; scale: 1; } }
-@keyframes pf-fade { from { opacity: 0; translate: 0 14px; } to { opacity: 1; translate: 0 0; } }
-@keyframes pf-pop { from { opacity: 0; scale: .5; rotate: -30deg; } to { opacity: 1; scale: 1; rotate: 0deg; } }
-@keyframes pf-glow { 0%,100% { opacity: .55; scale: 1; } 50% { opacity: .85; scale: 1.06; } }
-@keyframes pf-scroll { 0% { translate: 0 -100%; } 100% { translate: 0 100%; } }
-@keyframes pf-sway { 0%,100% { rotate: -2.5deg; } 50% { rotate: 2.5deg; } }
-@keyframes pf-bar { from { scale: 0 1; } to { scale: 1 1; } }
+@keyframes pf-drop { from { opacity: 0; transform: translate3d(0,-70%,0); } to { opacity: 1; transform: translate3d(0,0,0); } }
+@keyframes pf-float { 0%,100% { transform: translate3d(0,0,0); } 50% { transform: translate3d(0,-.045em,0); } }
+@keyframes pf-rise { from { opacity: 0; transform: translate3d(0,60px,0) scale(.96); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); } }
+@keyframes pf-fade { from { opacity: 0; transform: translate3d(0,14px,0); } to { opacity: 1; transform: translate3d(0,0,0); } }
+@keyframes pf-pop { from { opacity: 0; transform: scale(.5) rotate(-30deg); } to { opacity: 1; transform: scale(1) rotate(0deg); } }
+@keyframes pf-glow { 0%,100% { opacity: .55; } 50% { opacity: .85; } }
+@keyframes pf-scroll { 0% { transform: translate3d(0,-100%,0); } 100% { transform: translate3d(0,100%,0); } }
+@keyframes pf-sway { 0%,100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
 
 .pf-letter-wrap {
   display: inline-block;
@@ -147,30 +162,31 @@ html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 .pf-letter { display: inline-block; transform: translateY(var(--y)) rotate(var(--r)); transition: transform .6s var(--ease); }
 @media (hover: hover) { .pf-letter:hover { transform: translateY(calc(var(--y) - .1em)) rotate(calc(var(--r) * -1)) scale(1.06); } }
 .pf-year { opacity: 0; animation: pf-pop .9s var(--ease) 1.1s both; }
-.pf-hero-img { opacity: 0; animation: pf-rise 1.4s var(--ease) .6s both; }
+/* fill "backwards": setelah selesai, parallax inline (transform) tetap bisa jalan */
+.pf-hero-img { animation: pf-rise 1.4s var(--ease) .6s backwards; }
 .pf-hero-meta { opacity: 0; animation: pf-fade 1s var(--ease) calc(var(--d) * 1ms + 1100ms) both; }
 .pf-glow { animation: pf-glow 7s ease-in-out infinite; }
-.pf-scroll-line::after { content: ""; position: absolute; inset: 0; background: ${INK}; animation: pf-scroll 2.2s var(--ease) infinite; }
+.pf-scroll-line::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: ${INK}; animation: pf-scroll 2.2s var(--ease) infinite; }
 
 /* --- hard skills mengorbit di sekitar gambar hero --- */
-.pf-orbit { --P: 28s; --rx: min(calc(var(--h) * .66), 44vw); --ry: calc(var(--h) * .3); }
-@keyframes pf-orb-x { from { translate: calc(var(--rx) * -1) 0; } to { translate: var(--rx) 0; } }
-@keyframes pf-orb-y { from { translate: 0 calc(var(--ry) * -1); } to { translate: 0 var(--ry); } }
+.pf-orbit { --P: 28s; --rx: min(calc(var(--h) * .66), 34vw); --ry: calc(var(--h) * .3); }
+@keyframes pf-orb-x { from { transform: translate3d(calc(var(--rx) * -1),0,0); } to { transform: translate3d(var(--rx),0,0); } }
+@keyframes pf-orb-y { from { transform: translate3d(0,calc(var(--ry) * -1),0); } to { transform: translate3d(0,var(--ry),0); } }
 @keyframes pf-orb-z { 0%, 49.9% { z-index: 30; } 50%, 100% { z-index: 5; } }
 @keyframes pf-orb-s {
-  0%, 50% { scale: .92; opacity: .9; }
-  25% { scale: 1.06; opacity: 1; }
-  75% { scale: .78; opacity: .6; }
-  100% { scale: .92; opacity: .9; }
+  0%, 50% { transform: translate(-50%,-50%) scale(.92); opacity: .9; }
+  25% { transform: translate(-50%,-50%) scale(1.06); opacity: 1; }
+  75% { transform: translate(-50%,-50%) scale(.78); opacity: .6; }
+  100% { transform: translate(-50%,-50%) scale(.92); opacity: .9; }
 }
 .pf-orb-z { animation: pf-orb-z var(--P) linear infinite; animation-delay: calc(var(--o) * -1); }
 .pf-orb-x { animation: pf-orb-x calc(var(--P) / 2) cubic-bezier(.37,0,.63,1) infinite alternate; animation-delay: calc(var(--o) * -1); }
 .pf-orb-y { animation: pf-orb-y calc(var(--P) / 2) cubic-bezier(.37,0,.63,1) infinite alternate; animation-delay: calc(var(--o) * -1 - var(--P) / 4); }
-.pf-orb-chip { position: absolute; left: 0; top: 0; translate: -50% -50%; white-space: nowrap; animation: pf-orb-s var(--P) linear infinite; animation-delay: calc(var(--o) * -1); }
+.pf-orb-chip { position: absolute; left: 0; top: 0; transform: translate(-50%,-50%); white-space: nowrap; animation: pf-orb-s var(--P) linear infinite; animation-delay: calc(var(--o) * -1); }
 
 /* --- scroll reveal --- */
-.pf-reveal { opacity: 0; translate: 0 28px; transition: opacity 1s var(--ease), translate 1s var(--ease); transition-delay: var(--d, 0ms); }
-.pf-reveal[data-in="1"] { opacity: 1; translate: 0 0; }
+.pf-reveal { opacity: 0; transform: translate3d(0,28px,0); transition: opacity 1s var(--ease), transform 1s var(--ease); transition-delay: var(--d, 0ms); }
+.pf-reveal[data-in="1"] { opacity: 1; transform: none; }
 
 /* --- lanyard --- */
 .pf-sway { transform-origin: 50% 0; animation: pf-sway 7s ease-in-out infinite; }
@@ -178,11 +194,17 @@ html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
   .pf-sway:hover { animation-play-state: paused; }
 }
 
-.pf-bar { transform-origin: left; animation: pf-bar 1.2s var(--ease) both; }
-.pf-card { transition: translate .5s var(--ease), box-shadow .5s var(--ease); }
-.pf-card:hover { translate: 0 -3px; box-shadow: 0 18px 30px -22px rgba(20,30,80,.35); }
+.pf-bar { transform-origin: left; }
+.pf-card { transition: transform .5s var(--ease), box-shadow .5s var(--ease); }
+.pf-card:hover { transform: translate3d(0,-3px,0); box-shadow: 0 18px 30px -22px rgba(20,30,80,.35); }
 .pf-click { cursor: pointer; }
 .pf-click:focus-visible { outline: 2px solid ${ACCENT}; outline-offset: 2px; }
+
+/* --- tombol / ikon terangkat saat hover (hanya perangkat dengan kursor) --- */
+.pf-lift { transition: transform .4s var(--ease); }
+@media (hover: hover) {
+  .pf-lift:hover { transform: translate3d(0,-4px,0); }
+}
 
 /* --- scroll horizontal --- */
 .pf-hscroll {
@@ -197,29 +219,31 @@ html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 
 /* --- pop up --- */
 @keyframes pf-modal-bg-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes pf-modal-in { from { opacity: 0; translate: 0 24px; scale: .96; } to { opacity: 1; translate: 0 0; scale: 1; } }
+@keyframes pf-modal-in { from { opacity: 0; transform: translate3d(0,24px,0) scale(.96); } to { opacity: 1; transform: none; } }
 .pf-modal-bg { animation: pf-modal-bg-in .25s ease both; }
 .pf-modal { animation: pf-modal-in .45s var(--ease) both; }
 
 /* --- kartu & chip muncul bergantian --- */
-@keyframes pf-card-in { from { opacity: 0; translate: 0 36px; scale: .94; } to { opacity: 1; translate: 0 0; scale: 1; } }
+@keyframes pf-card-in { from { opacity: 0; transform: translate3d(0,36px,0) scale(.94); } }
 .pf-reveal[data-in="1"] .pf-stagger > *, .pf-modal .pf-stagger > * { animation: pf-card-in .8s var(--ease) backwards; }
 ${STAGGER_CSS}
 
 /* --- garis timeline & garis judul "menggambar" saat section muncul --- */
-.pf-reveal .pf-line { transform-origin: top; scale: 1 0; transition: scale .9s var(--ease); transition-delay: var(--ld, 0ms); }
-.pf-reveal[data-in="1"] .pf-line { scale: 1 1; }
-.pf-reveal .pf-head-line { transform-origin: left; scale: 0 1; transition: scale 1s var(--ease) .35s; }
-.pf-reveal[data-in="1"] .pf-head-line { scale: 1 1; }
+.pf-reveal .pf-line { transform-origin: top; transform: scaleY(0); transition: transform .9s var(--ease); transition-delay: var(--ld, 0ms); }
+.pf-reveal[data-in="1"] .pf-line { transform: scaleY(1); }
+.pf-reveal .pf-head-line { transform-origin: left; transform: scaleX(0); transition: transform 1s var(--ease) .35s; }
+.pf-reveal[data-in="1"] .pf-head-line { transform: scaleX(1); }
 
-/* --- tilt 3D kartu mengikuti kursor / sentuhan --- */
-.pf-tilt {
-  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
-  transition: translate .5s var(--ease), box-shadow .5s var(--ease), transform .25s ease-out;
+/* --- tilt 3D kartu mengikuti kursor (tidak aktif di sentuhan, lihat tiltMove) --- */
+.pf-tilt,
+.pf-tilt:hover {
+  transform: perspective(900px) translate3d(0,var(--ty,0px),0) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: box-shadow .5s var(--ease), transform .25s ease-out;
 }
+.pf-tilt:hover { --ty: -3px; }
 
 /* --- pita skill berjalan --- */
-@keyframes pf-marquee { from { translate: 0 0; } to { translate: -50% 0; } }
+@keyframes pf-marquee { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
 .pf-marquee { display: flex; width: max-content; animation: pf-marquee 42s linear infinite; }
 @media (hover: hover) {
   .pf-marquee-wrap:hover .pf-marquee { animation-play-state: paused; }
@@ -227,16 +251,18 @@ ${STAGGER_CSS}
 .pf-marquee-wrap { -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
 
 /* --- titik "available" berdenyut --- */
-@keyframes pf-ping { 0% { scale: 1; opacity: .7; } 80%, 100% { scale: 2.8; opacity: 0; } }
-.pf-ping::after { content: ""; position: absolute; inset: 0; border-radius: 999px; background: inherit; animation: pf-ping 1.8s ease-out infinite; }
+@keyframes pf-ping { 0% { transform: scale(1); opacity: .7; } 80%, 100% { transform: scale(2.8); opacity: 0; } }
+.pf-ping::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: 999px; background: inherit; animation: pf-ping 1.8s ease-out infinite; }
 
 /* --- kilau tombol --- */
 .pf-shine { position: relative; overflow: hidden; }
-.pf-shine::before { content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; pointer-events: none; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); transform: skewX(-20deg); translate: 0 0; transition: translate .9s var(--ease); }
-.pf-shine:hover::before { translate: 440% 0; }
+.pf-shine::before { content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; pointer-events: none; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); transform: translate3d(0,0,0) skewX(-20deg); transition: transform .9s var(--ease); }
+@media (hover: hover) {
+  .pf-shine:hover::before { transform: translate3d(440%,0,0) skewX(-20deg); }
+}
 
 /* --- kartu lanyard diayun saat diklik --- */
-@keyframes pf-swing { 0% { rotate: 0deg; } 15% { rotate: 14deg; } 35% { rotate: -10deg; } 55% { rotate: 6deg; } 75% { rotate: -3deg; } 100% { rotate: 0deg; } }
+@keyframes pf-swing { 0% { transform: rotate(0deg); } 15% { transform: rotate(14deg); } 35% { transform: rotate(-10deg); } 55% { transform: rotate(6deg); } 75% { transform: rotate(-3deg); } 100% { transform: rotate(0deg); } }
 .pf-swing { transform-origin: 50% 0; animation: pf-swing 1.8s ease-out both; }
 
 /* --- navigasi --- */
@@ -244,19 +270,22 @@ ${STAGGER_CSS}
 .pf-nav-link:hover { background-color: rgba(0,0,0,.07); }
 main [id] { scroll-margin-top: 5rem; }
 
-/* --- perangkat sentuh: tanpa panah geser (tilt & parallax tetap aktif lewat pointer events) --- */
+/* --- perangkat sentuh: tanpa panah geser, tanpa efek hover yang "menempel", glow statis --- */
 @media (hover: none) {
   .pf-arrow { display: none; }
-  .pf-card:hover { translate: 0 0; box-shadow: none; }
+  .pf-card:hover { box-shadow: none; }
+  .pf-card:not(.pf-tilt):hover { transform: none; }
+  .pf-tilt:hover { --ty: 0px; }
+  .pf-glow { animation: none; opacity: .7; }
 }
 
 /* --- ponsel landscape (layar pendek) --- */
 @media (max-height: 480px) and (orientation: landscape) {
-  #home { min-height: 125svh; }
+  #home { min-height: 125vh; }
 }
 
-/* --- performa GPU --- */
-.pf-letter-wrap, .pf-orb-x, .pf-orb-y, .pf-orb-chip, .pf-marquee, .pf-sway, .pf-glow { will-change: translate, scale, rotate, opacity; }
+/* --- performa GPU (dibatasi supaya memori HP tidak habis) --- */
+.pf-letter-wrap, .pf-orb-x, .pf-orb-y, .pf-marquee, .pf-sway { will-change: transform; }
 `;
 
 /* ---------- icon ---------- */
@@ -694,8 +723,9 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
     }
   };
 
-  /* parallax + sorotan di hero (mouse & sentuhan lewat pointer events) */
+  /* parallax + sorotan di hero: hanya mouse / pen. Sentuhan dilewati supaya swipe tetap mulus. */
   const onHeroMove = (e: React.PointerEvent<HTMLElement>) => {
+    if (e.pointerType === "touch") return;
     const el = e.currentTarget;
     const r = el.getBoundingClientRect();
     const x = (e.clientX - r.left) / r.width;
@@ -710,8 +740,9 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
     e.currentTarget.style.setProperty("--my", "0");
   };
 
-  /* tilt 3D kartu proyek & sertifikat (mouse & sentuhan lewat pointer events) */
+  /* tilt 3D kartu proyek & sertifikat: hanya mouse / pen */
   const tiltMove = (e: React.PointerEvent<HTMLElement>) => {
+    if (e.pointerType === "touch") return;
     const el = e.currentTarget;
     const r = el.getBoundingClientRect();
     const x = (e.clientX - r.left) / r.width - 0.5;
@@ -937,7 +968,7 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
               transition: "transform .5s var(--ease), opacity .3s ease, background-color .2s ease, color .2s ease",
             }}
           >
-            <svg aria-hidden viewBox="0 0 40 40" className="pointer-events-none absolute inset-0 h-full w-full -rotate-90">
+            <svg aria-hidden viewBox="0 0 40 40" className="pointer-events-none absolute inset-0 h-full w-full" style={{ transform: "rotate(-90deg)" }}>
               <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(0,0,0,.08)" strokeWidth="2" />
               <circle ref={ringRef} cx="20" cy="20" r="18" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeDasharray={RING} strokeDashoffset={RING} />
             </svg>
@@ -954,12 +985,16 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
         onPointerUp={onHeroLeave}
         onPointerCancel={onHeroLeave}
         onPointerLeave={onHeroLeave}
-        className="relative flex min-h-[100svh] w-full flex-col overflow-hidden"
-        style={{ background: SOFT, "--title": "clamp(2.75rem, min(15vw, 27svh), 17rem)", "--hero-h": "clamp(15rem, 50svh, 40rem)" } as React.CSSProperties}
+        className="relative flex w-full flex-col overflow-hidden"
+        style={{ background: SOFT }}
       >
-        {/* sorotan lembut yang mengikuti kursor / sentuhan */}
+        {/* sorotan lembut yang mengikuti kursor */}
         <div aria-hidden className="pointer-events-none absolute inset-0 z-0" style={{ background: "radial-gradient(520px circle at var(--px, 50%) var(--py, 45%), rgba(47,107,255,.10), transparent 60%)" }} />
-        <div aria-hidden className="pf-glow pointer-events-none absolute left-1/2 top-[48%] h-[70vh] w-[70vh] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl" style={{ background: "radial-gradient(circle,rgba(185,176,138,.35),transparent 65%)" }} />
+        <div
+          aria-hidden
+          className="pf-glow pointer-events-none absolute left-1/2 top-[48%] h-[70vh] w-[70vh] rounded-full"
+          style={{ transform: "translate(-50%,-50%)", background: "radial-gradient(circle,rgba(185,176,138,.35),transparent 65%)" }}
+        />
 
         <header className="relative z-20 flex items-center justify-between gap-3 px-4 pt-5 text-[10px] font-bold uppercase tracking-[0.12em] sm:px-6 sm:text-[11px] sm:tracking-[0.24em] md:px-12 md:pt-8 lg:px-20">
           <span className="pf-hero-meta truncate" style={{ "--d": 0 } as React.CSSProperties}>{name}</span>
@@ -995,11 +1030,15 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
           </h1>
 
           <div
-            className="pf-hero-img relative z-10 -mt-[calc(var(--title)*0.5)] flex justify-center"
-            style={{ transform: "translate3d(calc(var(--mx, 0) * 16px), calc(var(--my, 0) * 8px), 0)", transition: "transform .5s ease-out" }}
+            className="pf-hero-img relative z-10 flex justify-center"
+            style={{
+              marginTop: "calc(var(--title) * -0.5)",
+              transform: "translate3d(calc(var(--mx, 0) * 16px), calc(var(--my, 0) * 8px), 0)",
+              transition: "transform .5s ease-out",
+            }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={HERO_SRC} alt={name} className="relative z-10 h-[var(--hero-h)] w-auto max-w-full object-contain object-bottom drop-shadow-[0_30px_30px_rgba(0,0,0,.12)]" />
+            <img src={HERO_SRC} alt={name} className="relative z-10 w-auto max-w-full object-contain object-bottom drop-shadow-[0_30px_30px_rgba(0,0,0,.12)]" style={{ height: "var(--hero-h)" }} />
 
             {/* hard skills mengorbit di sekitar gambar */}
             {orbitSkills.length > 0 && (
@@ -1043,7 +1082,7 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
           <ul className="pf-hero-meta flex flex-wrap items-center justify-center gap-5 md:justify-end" style={{ "--d": 500 } as React.CSSProperties}>
             {contacts.map((c) => (
               <li key={c.label}>
-                <a href={c.href(c.v)} target="_blank" rel="noreferrer" aria-label={c.label} title={c.label} className="block p-1 transition-transform duration-500 hover:-translate-y-1">
+                <a href={c.href(c.v)} target="_blank" rel="noreferrer" aria-label={c.label} title={c.label} className="pf-lift block p-1">
                   <Icon name={SOCIAL_ICON[c.label] || "mail"} className="h-6 w-6" />
                 </a>
               </li>
@@ -1085,7 +1124,7 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
             >
               <span aria-hidden className="relative z-10 block h-[14rem] w-[4.2rem] rounded-[50%] border-[11px] border-[#d8d6cd] bg-transparent" />
               <span aria-hidden className="relative z-20 -mt-[3.6rem] block h-[3.4rem] w-[1.1rem] rounded-md border border-[#c4c2b8] bg-[#e4e2da]" />
-              <div className="-mt-6 w-full rotate-[-5deg] rounded-[1.5rem] bg-[#f6f5f1] p-3.5 pb-4 shadow-[0_28px_40px_-20px_rgba(10,20,50,.45)] ring-1 ring-black/5">
+              <div className="-mt-6 w-full rounded-[1.5rem] bg-[#f6f5f1] p-3.5 pb-4 shadow-[0_28px_40px_-20px_rgba(10,20,50,.45)] ring-1 ring-black/5" style={{ transform: "rotate(-5deg)" }}>
                 <div className="aspect-[4/5] overflow-hidden rounded-xl p-1.5" style={{ background: "linear-gradient(135deg,#dfe6fb,#eef1fd)" }}>
                   <div className="h-full w-full overflow-hidden rounded-lg">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1113,7 +1152,7 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
                   href={CV_URL}
                   target="_blank"
                   rel="noreferrer"
-                  className="pf-shine inline-flex shrink-0 items-center gap-2 rounded-full bg-black px-6 py-3.5 text-[13px] font-bold text-white shadow-[0_10px_24px_-8px_rgba(47,107,255,.55)] transition-transform duration-300 hover:-translate-y-0.5"
+                  className="pf-shine pf-lift inline-flex shrink-0 items-center gap-2 rounded-full bg-black px-6 py-3.5 text-[13px] font-bold text-white shadow-[0_10px_24px_-8px_rgba(47,107,255,.55)]"
                 >
                   <Icon name="download" className="h-4 w-4" />
                   Unduh CV Lengkap
@@ -1254,12 +1293,12 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
                   href={mainContact}
                   target="_blank"
                   rel="noreferrer"
-                  className="pf-shine rounded-full px-7 py-3.5 text-[13px] font-bold text-white shadow-[0_12px_26px_-8px_rgba(47,107,255,.7)] transition-transform duration-300 hover:-translate-y-0.5"
+                  className="pf-shine pf-lift rounded-full px-7 py-3.5 text-[13px] font-bold text-white shadow-[0_12px_26px_-8px_rgba(47,107,255,.7)]"
                   style={{ background: ACCENT }}
                 >
                   Kirim Pesan
                 </a>
-                <a href="#proyek" className="rounded-full bg-white px-6 py-3.5 text-[13px] font-bold shadow-[0_8px_22px_-10px_rgba(0,0,0,.25)] ring-1 ring-black/[0.04] transition-transform duration-300 hover:-translate-y-0.5">
+                <a href="#proyek" className="pf-lift rounded-full bg-white px-6 py-3.5 text-[13px] font-bold shadow-[0_8px_22px_-10px_rgba(0,0,0,.25)] ring-1 ring-black/[0.04]">
                   Lihat Eksplorasi
                 </a>
               </div>
