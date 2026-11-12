@@ -254,21 +254,6 @@ main [id] { scroll-margin-top: 5rem; }
 @media (max-height: 480px) and (orientation: landscape) {
   #home { min-height: 125svh; }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-
-  .pf-letter-wrap { animation: pf-drop 1s var(--ease) calc(var(--i) * 70ms + 150ms) both; }
-
-  .pf-sway, .pf-glow, .pf-marquee,
-  .pf-ping::after, .pf-scroll-line::after { animation: none !important; }
-  .pf-tilt { transform: none !important; }
-
-  .pf-orb-z, .pf-orb-x, .pf-orb-y, .pf-orb-chip { animation: none !important; }
-  .pf-orb-x { translate: calc(var(--rx) * cos(var(--a))) 0; }
-  .pf-orb-y { translate: 0 calc(var(--ry) * sin(var(--a))); }
-  .pf-orb-chip { scale: .92; opacity: 1; }
-}
 `;
 
 /* ---------- icon ---------- */
