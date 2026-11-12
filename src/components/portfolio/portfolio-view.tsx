@@ -44,9 +44,6 @@ const CV_URL = "/cv?print=1";
 /* jumlah item organisasi yang tampil di panel sebelum "Lihat Selengkapnya" */
 const PREVIEW_COUNT = 3;
 
-/* perangkat sentuh (tanpa hover): efek parallax / tilt dimatikan agar tidak "macet" setelah tap */
-const noHover = () => typeof window !== "undefined" && window.matchMedia("(hover: none)").matches;
-
 /* ---------- helper data ---------- */
 const pick = (o: unknown, keys: string[]): string => {
   const r = o as Record<string, unknown>;
@@ -177,7 +174,9 @@ html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 
 /* --- lanyard --- */
 .pf-sway { transform-origin: 50% 0; animation: pf-sway 7s ease-in-out infinite; }
-.pf-sway:hover { animation-play-state: paused; }
+@media (hover: hover) {
+  .pf-sway:hover { animation-play-state: paused; }
+}
 
 .pf-bar { transform-origin: left; animation: pf-bar 1.2s var(--ease) both; }
 .pf-card { transition: translate .5s var(--ease), box-shadow .5s var(--ease); }
@@ -213,7 +212,7 @@ ${STAGGER_CSS}
 .pf-reveal .pf-head-line { transform-origin: left; scale: 0 1; transition: scale 1s var(--ease) .35s; }
 .pf-reveal[data-in="1"] .pf-head-line { scale: 1 1; }
 
-/* --- tilt 3D kartu mengikuti kursor --- */
+/* --- tilt 3D kartu mengikuti kursor / sentuhan --- */
 .pf-tilt {
   transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
   transition: translate .5s var(--ease), box-shadow .5s var(--ease), transform .25s ease-out;
@@ -222,7 +221,9 @@ ${STAGGER_CSS}
 /* --- pita skill berjalan --- */
 @keyframes pf-marquee { from { translate: 0 0; } to { translate: -50% 0; } }
 .pf-marquee { display: flex; width: max-content; animation: pf-marquee 42s linear infinite; }
-.pf-marquee-wrap:hover .pf-marquee { animation-play-state: paused; }
+@media (hover: hover) {
+  .pf-marquee-wrap:hover .pf-marquee { animation-play-state: paused; }
+}
 .pf-marquee-wrap { -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
 
 /* --- titik "available" berdenyut --- */
@@ -243,17 +244,19 @@ ${STAGGER_CSS}
 .pf-nav-link:hover { background-color: rgba(0,0,0,.07); }
 main [id] { scroll-margin-top: 5rem; }
 
-/* --- perangkat sentuh: tanpa panah geser, tanpa efek hover / tilt --- */
+/* --- perangkat sentuh: tanpa panah geser (tilt & parallax tetap aktif lewat pointer events) --- */
 @media (hover: none) {
   .pf-arrow { display: none; }
   .pf-card:hover { translate: 0 0; box-shadow: none; }
-  .pf-tilt { transform: none !important; }
 }
 
 /* --- ponsel landscape (layar pendek) --- */
 @media (max-height: 480px) and (orientation: landscape) {
   #home { min-height: 125svh; }
 }
+
+/* --- performa GPU --- */
+.pf-letter-wrap, .pf-orb-x, .pf-orb-y, .pf-orb-chip, .pf-marquee, .pf-sway, .pf-glow { will-change: translate, scale, rotate, opacity; }
 `;
 
 /* ---------- icon ---------- */
@@ -287,7 +290,7 @@ function Icon({ name, className = "h-5 w-5" }: { name: string; className?: strin
 }
 
 /* ---------- util animasi ---------- */
-function useInView<T extends HTMLElement>(threshold = 0.08) {
+function useInView<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   const [seen, setSeen] = useState(false);
   useEffect(() => {
@@ -301,11 +304,11 @@ function useInView<T extends HTMLElement>(threshold = 0.08) {
           io.disconnect();
         }
       },
-      { threshold, rootMargin: "0px 0px -5% 0px" },
+      { threshold: 0, rootMargin: "0px 0px -8% 0px" },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [threshold]);
+  }, []);
   return [ref, seen] as const;
 }
 
@@ -691,9 +694,8 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
     }
   };
 
-  /* parallax + sorotan kursor di hero (dinonaktifkan di layar sentuh) */
-  const onHeroMove = (e: React.MouseEvent<HTMLElement>) => {
-    if (noHover()) return;
+  /* parallax + sorotan di hero (mouse & sentuhan lewat pointer events) */
+  const onHeroMove = (e: React.PointerEvent<HTMLElement>) => {
     const el = e.currentTarget;
     const r = el.getBoundingClientRect();
     const x = (e.clientX - r.left) / r.width;
@@ -703,14 +705,13 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
     el.style.setProperty("--px", `${x * 100}%`);
     el.style.setProperty("--py", `${y * 100}%`);
   };
-  const onHeroLeave = (e: React.MouseEvent<HTMLElement>) => {
+  const onHeroLeave = (e: React.PointerEvent<HTMLElement>) => {
     e.currentTarget.style.setProperty("--mx", "0");
     e.currentTarget.style.setProperty("--my", "0");
   };
 
-  /* tilt 3D kartu proyek & sertifikat (dinonaktifkan di layar sentuh) */
-  const tiltMove = (e: React.MouseEvent<HTMLElement>) => {
-    if (noHover()) return;
+  /* tilt 3D kartu proyek & sertifikat (mouse & sentuhan lewat pointer events) */
+  const tiltMove = (e: React.PointerEvent<HTMLElement>) => {
     const el = e.currentTarget;
     const r = el.getBoundingClientRect();
     const x = (e.clientX - r.left) / r.width - 0.5;
@@ -718,7 +719,7 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
     el.style.setProperty("--ry", `${x * 8}deg`);
     el.style.setProperty("--rx", `${-y * 8}deg`);
   };
-  const tiltLeave = (e: React.MouseEvent<HTMLElement>) => {
+  const tiltLeave = (e: React.PointerEvent<HTMLElement>) => {
     e.currentTarget.style.setProperty("--rx", "0deg");
     e.currentTarget.style.setProperty("--ry", "0deg");
   };
@@ -798,8 +799,11 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
         aria-label={`Lihat detail ${projTitle(p)}`}
         onClick={open}
         onKeyDown={onKeyOpen(open)}
-        onMouseMove={tiltMove}
-        onMouseLeave={tiltLeave}
+        onPointerMove={tiltMove}
+        onPointerDown={tiltMove}
+        onPointerUp={tiltLeave}
+        onPointerCancel={tiltLeave}
+        onPointerLeave={tiltLeave}
         className={`pf-card pf-tilt pf-click group flex flex-col rounded-[1.25rem] border border-black/[0.07] bg-[#fafafa] p-3.5 ${cls}`}
       >
         <div className="relative aspect-[16/9.4] w-full overflow-hidden rounded-[0.9rem] bg-[#eceaf5]">
@@ -847,8 +851,11 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
         aria-label={`Lihat detail ${c.t}`}
         onClick={open}
         onKeyDown={onKeyOpen(open)}
-        onMouseMove={tiltMove}
-        onMouseLeave={tiltLeave}
+        onPointerMove={tiltMove}
+        onPointerDown={tiltMove}
+        onPointerUp={tiltLeave}
+        onPointerCancel={tiltLeave}
+        onPointerLeave={tiltLeave}
         className={`pf-card pf-tilt pf-click group flex flex-col rounded-[1.25rem] border border-black/[0.07] bg-[#fafafa] p-5 ${cls}`}
       >
         <p className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-black/55">{[c.issuer, c.y].filter(Boolean).join(" • ") || "Sertifikat"}</p>
@@ -884,7 +891,7 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
       className={`${body.className} ${inter.variable} relative w-full overflow-x-hidden bg-white`}
       style={{ color: INK }}
     >
-      <style>{CSS}</style>
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
       {!embed && (
         <>
@@ -942,12 +949,15 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
       {/* ====================== HERO ====================== */}
       <section
         id="home"
-        onMouseMove={onHeroMove}
-        onMouseLeave={onHeroLeave}
+        onPointerMove={onHeroMove}
+        onPointerDown={onHeroMove}
+        onPointerUp={onHeroLeave}
+        onPointerCancel={onHeroLeave}
+        onPointerLeave={onHeroLeave}
         className="relative flex min-h-[100svh] w-full flex-col overflow-hidden"
         style={{ background: SOFT, "--title": "clamp(2.75rem, min(15vw, 27svh), 17rem)", "--hero-h": "clamp(15rem, 50svh, 40rem)" } as React.CSSProperties}
       >
-        {/* sorotan lembut yang mengikuti kursor */}
+        {/* sorotan lembut yang mengikuti kursor / sentuhan */}
         <div aria-hidden className="pointer-events-none absolute inset-0 z-0" style={{ background: "radial-gradient(520px circle at var(--px, 50%) var(--py, 45%), rgba(47,107,255,.10), transparent 60%)" }} />
         <div aria-hidden className="pf-glow pointer-events-none absolute left-1/2 top-[48%] h-[70vh] w-[70vh] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl" style={{ background: "radial-gradient(circle,rgba(185,176,138,.35),transparent 65%)" }} />
 
@@ -1003,7 +1013,7 @@ export default function PortfolioView({ data, embed = false }: { data: Data; emb
                   {orbitSkills.map((s, i, arr) => (
                     <span
                       key={i}
-                      className={`pf-orb-z absolute left-1/2 top-[44%] block h-0 w-0 ${i >= 5 ? "max-sm:hidden" : ""}`}
+                      className="pf-orb-z absolute left-1/2 top-[44%] block h-0 w-0"
                       style={{ "--o": `${(i / arr.length) * 28}s`, "--a": `${(i / arr.length) * 360}deg` } as React.CSSProperties}
                     >
                       <span className="pf-orb-x relative block">
